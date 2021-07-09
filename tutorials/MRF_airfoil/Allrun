@@ -1,0 +1,9 @@
+# clean 0 directory
+rm -rf 0
+
+#Create folder 0
+cp -rf 0.orig 0
+
+# Run the case
+sedFoam_rbgh>log&
+

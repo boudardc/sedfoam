@@ -1,0 +1,21 @@
+#!/bin/bash
+
+#OAR -n MRF_tuto
+#OAR -l /nodes=1/core=1,walltime=12:00:00
+
+# For scalability analysis use one full node (core=20 and not core=1)
+
+. /etc/profile
+module load openfoam/2012plus
+
+# Shell avec variable d'environnement transmis (inutile en séquentiel)
+export OMPI_MCA_plm_rsh_agent=oar-envsh
+
+# clean 0 directory
+rm -rf 0
+
+# copy initial and boundary condition
+cp -rf 0.orig 0
+
+# Sequential computation
+sedFoam_rbgh>log&
