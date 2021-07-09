@@ -772,4 +772,7 @@ if (p_rbgh.needReference())
     );
     p_rbgh = p - rhob*gh;
 }
+
+#include "createMRF.H"
+
 Info<<"end of createFields"<<endl;

@@ -190,17 +190,20 @@ License
         //      (account for time evolution)
         surfaceScalarField phiUa =
         (
-            (fvc::interpolate(HabyA) & mesh.Sf()) + rUaAf*fvc::ddtCorr(Ua, phia)
+            (fvc::interpolate(HabyA) & mesh.Sf()) + MRF.zeroFilter(rUaAf*fvc::ddtCorr(Ua, phia))
         );
 
         surfaceScalarField phiUb =
         (
-            (fvc::interpolate(HbbyA) & mesh.Sf()) + rUbAf*fvc::ddtCorr(Ub, phib)
+            (fvc::interpolate(HbbyA) & mesh.Sf()) + MRF.zeroFilter(rUbAf*fvc::ddtCorr(Ub, phib))
         );
         // Compute predicted velocity fluxes at cell faces
         //      (account for momentum fluxes computed at cell faces)
         surfaceScalarField phiaHbyA = phiUa + phiDraga;
         surfaceScalarField phibHbyA = phiUb + phiDragb;
+
+	MRF.makeRelative(phiaHbyA);
+	MRF.makeRelative(phibHbyA);
 
         // Face-drag coefficients
         surfaceScalarField rAUKda(fvc::interpolate(beta/rhoa*K*rUaA));
@@ -210,7 +213,7 @@ License
         surfaceScalarField phiHbyA = alphaf*(phiaHbyA + rAUKda*phib)
                                    + betaf*(phibHbyA + rAUKdb*phia);
 
-        // adjustPhi(phiHbyA, U, p_rbgh);
+	// adjustPhi(phiHbyA, U, p_rbgh);
 
         // Assemble Poisson operator for the pressure
         surfaceScalarField Dp
@@ -226,9 +229,9 @@ License
             (
                 phiHbyA.boundaryField()
               - alphaf.boundaryField()
-               *(mesh.Sf().boundaryField() & Ua.boundaryField())
+               *MRF.relative(mesh.Sf().boundaryField() & Ua.boundaryField())
               + betaf.boundaryField()
-               *(mesh.Sf().boundaryField() & Ub.boundaryField())
+               *MRF.relative(mesh.Sf().boundaryField() & Ub.boundaryField())
              )
             /(mesh.magSf().boundaryField()*Dp.boundaryField())
         );
@@ -298,12 +301,16 @@ License
                 Ua = U + beta*Ur;
                 Ua.correctBoundaryConditions();
                 //fvOptions.correct(Ua);
+		
+		fvc::makeRelative(phia, Ua);
 
                 Ub = U - alpha*Ur;
                 Ub.correctBoundaryConditions();
                 //fvOptions.correct(Ub);
 
-                // Compute total pressure including hydrostatic contribution
+		fvc::makeRelative(phib, Ub);
+
+		// Compute total pressure including hydrostatic contribution
                 p = p_rbgh + rhob*gh;
                 if (p_rbgh.needReference())
                 {
@@ -322,6 +329,13 @@ License
                 // Update mixture velocity
                 U = alpha*Ua + beta*Ub;
                 U.correctBoundaryConditions();
+
+		// Correct Uf if the mesh is moving
+		fvc::correctUf(Uf, U, phi);
+
+		// Make the fluxes relative to the mesh motion
+		fvc::makeRelative(phi, U);
+
             }
         }
     }
